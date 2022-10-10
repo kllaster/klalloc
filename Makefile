@@ -30,6 +30,7 @@ INC_DIR			= include
 
 SRCS			= src/klalloc.c\
 					src/slab_alloc.c\
+					src/body_alloc.c\
 					src/utils.c\
 
 SYMLINK_NAME	= lib$(NAME).$(EXT)
@@ -79,7 +80,7 @@ $(TESTS_BUILD_DIR)/%.o: $(TESTS_SRC_DIR)/%.c
 
 $(TESTS_BIN):   	$(TESTS_OBJS) $(OBJS)
 					@if [ ! -d $(dir $@) ] ; then $(MKDIR) $(dir $@); fi
-					$(CC) $(CFLAGS) -I $(INC_DIR) -I $(TESTS_INC_DIR) $< $(OBJS) -o $@
+					$(CC) $(CFLAGS) -I $(INC_DIR) -I $(TESTS_INC_DIR) $(TESTS_OBJS) $(OBJS) -o $@
 
 tests_clean:
 					$(RM) $(TESTS_OBJS)

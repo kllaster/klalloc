@@ -1,16 +1,5 @@
 #include "../../include/slab_alloc.h"
-#include <printf.h>
-#include <stdlib.h>
-#include <assert.h>
-
-#define assert_print_ptr(expr, ptr1, ptr2) \
-        if (!(expr)) { \
-            dprintf(STDERR_FILENO, "ptr1: %p, ptr2: %p\n", ptr1, ptr2); \
-            assert((expr)); \
-        } \
-
-#define print_str_literal(str) \
-        write(1, (str), sizeof(str) - 1); \
+#include "test_utils.h"
 
 size_t iter_alloc_slabs = -1;
 void *alloc_slabs[100] = {};
@@ -68,12 +57,11 @@ void test_allocate_small_objects_and_free()
 		assert(arr[i] < upper_bound);
 	}
 
-	print_str_literal("[+] Success test allocate small objects and free\n");
+	print_str_literal("[+] Success test slab_alloc allocation small objects and free\n");
 }
 
-int main(void)
+void slab_tests()
 {
+	print_str_literal("Slab allocator tests:\n");
 	test_allocate_small_objects_and_free();
-
-	return (0);
 }
