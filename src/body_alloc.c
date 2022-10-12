@@ -1,5 +1,4 @@
 #include "body_alloc.h"
-#include <printf.h>
 
 static t_body_alloc_node *move_pointer_node(t_body_alloc_node *node, size_t size)
 {
@@ -10,6 +9,7 @@ void body_alloc_setup(t_body_alloc_meta *body_alloc_meta, void *buf, size_t size
 {
 	t_body_alloc_node *node;
 
+	body_alloc_meta->next = NULL;
 	if (buf == NULL || size == 0)
 	{
 		body_alloc_meta->start = NULL;
@@ -35,7 +35,7 @@ void body_alloc_setup(t_body_alloc_meta *body_alloc_meta, void *buf, size_t size
 	body_alloc_meta->max_node_size = node->size;
 }
 
-static size_t get_max_node_size(const t_body_alloc_meta* body_alloc_meta)
+static size_t get_max_node_size(const t_body_alloc_meta *body_alloc_meta)
 {
 	size_t max_node_size = 0;
 	t_body_alloc_node *node = body_alloc_meta->start;
@@ -121,7 +121,8 @@ static void check_right_segment(t_body_alloc_meta *body_alloc_meta, t_body_alloc
 	right_node->size = node->size;
 }
 
-static t_body_alloc_node *check_left_segment(t_body_alloc_meta *body_alloc_meta, t_body_alloc_node *node)
+static t_body_alloc_node *
+check_left_segment(t_body_alloc_meta *body_alloc_meta, t_body_alloc_node *node)
 {
 	t_body_alloc_node *left_node;
 
@@ -144,9 +145,9 @@ void body_alloc_free(t_body_alloc_meta *body_alloc_meta, void *ptr)
 {
 	t_body_alloc_node *node, *node_end;
 
-	node = move_pointer_node(ptr, -sizeof(t_body_alloc_node));
-	if ((void *)node < body_alloc_meta->start || ptr > body_alloc_meta->end)
+	if (ptr < body_alloc_meta->start || ptr > body_alloc_meta->end)
 		return;
+	node = move_pointer_node(ptr, -sizeof(t_body_alloc_node));
 	node->is_free = true;
 
 	node_end = move_pointer_node(node, node->size + sizeof(t_body_alloc_node));
@@ -161,4 +162,22 @@ void body_alloc_free(t_body_alloc_meta *body_alloc_meta, void *ptr)
 	node = check_left_segment(body_alloc_meta, node);
 	if (node->size > body_alloc_meta->max_node_size)
 		body_alloc_meta->max_node_size = node->size;
+}
+
+bool ptr_in_body_alloc_single(t_body_alloc_meta *body_alloc_meta, void *ptr)
+{
+	if (ptr >= body_alloc_meta->start && ptr < body_alloc_meta->end)
+		return true;
+	return false;
+}
+
+t_body_alloc_meta *ptr_in_body_alloc_list(t_body_alloc_meta *body_alloc_meta, void *ptr)
+{
+	while (body_alloc_meta)
+	{
+		if (ptr_in_body_alloc_single(body_alloc_meta, ptr))
+			return body_alloc_meta;
+		body_alloc_meta = body_alloc_meta->next;
+	}
+	return NULL;
 }

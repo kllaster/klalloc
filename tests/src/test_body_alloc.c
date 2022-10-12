@@ -223,6 +223,41 @@ void test_body_alloc_check_max_node_size()
 	print_str_literal("[+] Success test body_alloc check max_node_size\n");
 }
 
+void test_body_alloc_check_ptr_in_body_alloc_list()
+{
+	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
+	char buf[memory_size];
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
+
+	body_alloc_setup(
+		body_alloc_meta,
+		(char *)&buf + sizeof(t_body_alloc_meta),
+		memory_size - sizeof(t_body_alloc_meta)
+	);
+
+	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * 10);
+	assert(arr != NULL);
+
+	for (int i = 0; i < 10; i++)
+	{
+		arr[i] = body_alloc(body_alloc_meta, 100);
+		assert(arr[i] != NULL);
+		assert(ptr_in_body_alloc_list(body_alloc_meta, arr[i]));
+	}
+
+	assert(body_alloc(body_alloc_meta, 100) == NULL);
+
+	for (int i = 0; i < 10; i++)
+	{
+		body_alloc_free(body_alloc_meta, arr[i]);
+	}
+	body_alloc_free(body_alloc_meta, arr);
+
+	assert(!ptr_in_body_alloc_list(body_alloc_meta, (void *)0x01));
+
+	print_str_literal("[+] Success test body_alloc check ptr in body_alloc list\n");
+}
+
 void body_alloc_tests()
 {
 	print_str_literal("Body allocator tests:\n");
@@ -231,4 +266,5 @@ void body_alloc_tests()
 	test_body_alloc_valid_data();
 	test_body_alloc_defragmentation();
 	test_body_alloc_check_max_node_size();
+	test_body_alloc_check_ptr_in_body_alloc_list();
 }

@@ -27,5 +27,6 @@ struct s_body_alloc_meta
 void body_alloc_setup(t_body_alloc_meta *body_alloc_meta, void *buf, size_t size);
 void *body_alloc(t_body_alloc_meta *body_alloc_meta, size_t size);
 void body_alloc_free(t_body_alloc_meta *body_alloc_meta, void *ptr);
+t_body_alloc_meta *ptr_in_body_alloc_list(t_body_alloc_meta *body_alloc_meta, void *ptr);
 
 #endif
