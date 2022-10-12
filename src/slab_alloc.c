@@ -1,13 +1,13 @@
 #include "slab_alloc.h"
+#include <printf.h>
 
 void cache_setup(
 	struct cache *cache,
-	void *(*allocate_slab)(int),
-	void (*deallocate_slab)(void *, int),
+	void *(*allocate_slab)(size_t),
+	void (*deallocate_slab)(void *, size_t),
 	size_t object_size
 )
 {
-	object_size = align(object_size);
 	cache->free_slabs = NULL;
 	cache->partially_slabs = NULL;
 	cache->full_slabs = NULL;
@@ -15,22 +15,24 @@ void cache_setup(
 	cache->allocate_slab = allocate_slab;
 	cache->deallocate_slab = deallocate_slab;
 
+	size_t slab_order;
 	if (object_size > 4096)
-		cache->slab_order = (int)(object_size / 4096) * 2;
+		slab_order = (int)(object_size / 4096) * 2;
 	else if (object_size > 2048)
-		cache->slab_order = 1;
+		slab_order = 1;
 	else
-		cache->slab_order = 0;
+		slab_order = 0;
 
-	size_t slab_size = 4096 * (size_t)(1 << cache->slab_order);
-	size_t slab_size_without_header = slab_size - sizeof(t_slab);
+	cache->slab_size = 4096 * (size_t)(1 << slab_order);
+	size_t slab_size_without_header = cache->slab_size - sizeof(t_slab);
 
 	if (slab_size_without_header < object_size)
 	{
-		cache->slab_order += 1;
-		slab_size = 4096 * (size_t)(1 << cache->slab_order);
+		slab_order += 1;
+		cache->slab_size = 4096 * (size_t)(1 << slab_order);
 	}
-	cache->objects_in_slab = (slab_size - sizeof(t_slab)) / object_size;
+
+	cache->objects_in_slab = (cache->slab_size - sizeof(t_slab)) / object_size;
 	cache->slab_offset_to_header = cache->objects_in_slab * object_size;
 }
 
@@ -139,10 +141,10 @@ static void alloc_new_slab(struct cache *cache)
 	char *mem;
 	t_slab *slab;
 
-	mem = (char *)cache->allocate_slab(cache->slab_order);
+	mem = (char *)cache->allocate_slab(cache->slab_size);
 	if (mem == NULL)
 		return;
-	slab = (t_slab *)(mem + cache->slab_offset_to_header);
+	slab = (t_slab * )(mem + cache->slab_offset_to_header);
 	slab->start_mem = mem;
 	slab->count_free = cache->objects_in_slab;
 	slab->next = NULL;
@@ -175,13 +177,42 @@ void *cache_alloc(struct cache *cache)
 	return obj;
 }
 
+static bool ptr_in_slabs(t_slab *slab, size_t slab_offset_to_header, void *ptr)
+{
+	while (slab)
+	{
+		if (ptr >= slab->start_mem && (char *)ptr < (char *)slab->start_mem + slab_offset_to_header)
+			return true;
+		slab = slab->next;
+	}
+	return false;
+}
+
+bool ptr_in_cache(struct cache *cache, void *ptr)
+{
+	if (cache->partially_slabs
+	    && ptr_in_slabs(cache->partially_slabs, cache->slab_offset_to_header, ptr))
+	{
+		return true;
+	}
+	if (cache->full_slabs
+	    && ptr_in_slabs(cache->full_slabs, cache->slab_offset_to_header, ptr))
+	{
+		return true;
+	}
+	return false;
+}
+
 void cache_free(struct cache *cache, void *ptr)
 {
 	t_slab *slab;
 	char **new_obj;
 
-	slab = (t_slab *)(
-		(char *)((uint64_t)ptr & (~(4096 * (1UL << cache->slab_order) - 1)))
+	if (!ptr_in_cache(cache, ptr))
+		return;
+
+	slab = (t_slab * )(
+		(char *)((uint64_t)ptr & (~(cache->slab_size - 1)))
 		+ cache->slab_offset_to_header
 	);
 	new_obj = (char **)ptr;
@@ -212,13 +243,13 @@ void cache_shrink(struct cache *cache)
 	iter = cache->free_slabs;
 	while (iter)
 	{
-		cache->deallocate_slab(iter->start_mem, cache->slab_order);
+		cache->deallocate_slab(iter->start_mem, cache->slab_size);
 		iter = iter->next;
 	}
 	cache->free_slabs = NULL;
 }
 
-static void free_slabs(void (*deallocate_slab)(void *, int), t_slab *slab_iter, int slab_order)
+static void free_slabs(void (*deallocate_slab)(void *, size_t), t_slab *slab_iter, int slab_size)
 {
 	t_slab *iter;
 	void *slab;
@@ -228,16 +259,16 @@ static void free_slabs(void (*deallocate_slab)(void *, int), t_slab *slab_iter, 
 	{
 		slab = iter->start_mem;
 		iter = iter->next;
-		deallocate_slab(slab, slab_order);
+		deallocate_slab(slab, slab_size);
 	}
 }
 
 void cache_release(struct cache *cache)
 {
-	free_slabs(cache->deallocate_slab, cache->free_slabs, cache->slab_order);
+	free_slabs(cache->deallocate_slab, cache->free_slabs, cache->slab_size);
 	cache->free_slabs = NULL;
-	free_slabs(cache->deallocate_slab, cache->partially_slabs, cache->slab_order);
+	free_slabs(cache->deallocate_slab, cache->partially_slabs, cache->slab_size);
 	cache->partially_slabs = NULL;
-	free_slabs(cache->deallocate_slab, cache->full_slabs, cache->slab_order);
+	free_slabs(cache->deallocate_slab, cache->full_slabs, cache->slab_size);
 	cache->full_slabs = NULL;
 }

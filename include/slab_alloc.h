@@ -2,7 +2,7 @@
 # define KLSLAB_H
 
 # include <unistd.h>
-# include "utils.h"
+# include <stdbool.h>
 
 typedef struct s_slab t_slab;
 
@@ -31,14 +31,12 @@ struct cache
 	t_slab *partially_slabs;
 	t_slab *full_slabs;
 	// allocate_slab - allocate memory where size = getpagesize() * 2 ^ order
-	void *(*allocate_slab)(int);
-	void (*deallocate_slab)(void *, int);
+	void *(*allocate_slab)(size_t);
+	void (*deallocate_slab)(void *, size_t);
 	size_t object_size;
 	size_t objects_in_slab;
 	size_t slab_offset_to_header;
-
-	// for allocate_slab() / deallocate_slab()
-	int slab_order;
+	size_t slab_size;
 };
 
 /**
@@ -46,8 +44,8 @@ struct cache
  **/
 void cache_setup(
 	struct cache *cache,
-	void *(*allocate_slab)(int),
-	void (*deallocate_slab)(void *, int),
+	void *(*allocate_slab)(size_t),
+	void (*deallocate_slab)(void *, size_t),
 	size_t object_size
 );
 
@@ -70,5 +68,10 @@ void *cache_alloc(struct cache *cache);
  * Free object in slab
  **/
 void cache_free(struct cache *cache, void *ptr);
+
+/**
+ * Check if pointer is in cache
+ **/
+bool ptr_in_cache(struct cache *cache, void *ptr);
 
 #endif
