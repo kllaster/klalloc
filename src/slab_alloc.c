@@ -1,7 +1,7 @@
 #include "slab_alloc.h"
 
 void cache_setup(
-	struct cache *cache,
+	t_slab_cache *cache,
 	void *(*allocate_slab)(size_t),
 	void (*deallocate_slab)(void *, size_t),
 	size_t object_size
@@ -14,22 +14,13 @@ void cache_setup(
 	cache->allocate_slab = allocate_slab;
 	cache->deallocate_slab = deallocate_slab;
 
-	size_t slab_order;
-	if (object_size > 4096)
-		slab_order = (int)(object_size / 4096) * 2;
-	else if (object_size > 2048)
-		slab_order = 1;
+	size_t page_size = getpagesize();
+	if (object_size >= page_size * 4)
+		cache->slab_size = align(object_size + sizeof(t_slab), page_size);
+	else if (object_size >= page_size)
+		cache->slab_size = align(object_size * 4 + sizeof(t_slab), page_size);
 	else
-		slab_order = 0;
-
-	cache->slab_size = 4096 * (size_t)(1UL << slab_order);
-	size_t slab_size_without_header = cache->slab_size - sizeof(t_slab);
-
-	if (slab_size_without_header < object_size)
-	{
-		slab_order += 1;
-		cache->slab_size = 4096 * (size_t)(1 << slab_order);
-	}
+		cache->slab_size = align(object_size * 100 + sizeof(t_slab), page_size);
 
 	cache->objects_in_slab = (cache->slab_size - sizeof(t_slab)) / object_size;
 	cache->slab_offset_to_header = cache->objects_in_slab * object_size;
@@ -68,7 +59,7 @@ static void slab_move_list(t_slab *slab, t_slab **move_from, t_slab **move_to)
 	*move_to = slab;
 }
 
-static void check_slab_obj_and_move(struct cache *cache, t_slab_list slab_list, t_slab *slab)
+static void check_slab_obj_and_move(t_slab_cache *cache, t_slab_list slab_list, t_slab *slab)
 {
 	if (slab == NULL)
 		return;
@@ -117,7 +108,7 @@ static void *get_new_obj(t_slab *slab)
 	return obj;
 }
 
-static void init_slab_objs(struct cache *cache, t_slab *slab)
+static void init_slab_objs(t_slab_cache *cache, t_slab *slab)
 {
 	unsigned int i;
 	char **obj;
@@ -135,7 +126,7 @@ static void init_slab_objs(struct cache *cache, t_slab *slab)
 	obj = NULL;
 }
 
-static void alloc_new_slab(struct cache *cache)
+static void alloc_new_slab(t_slab_cache *cache)
 {
 	char *mem;
 	t_slab *slab;
@@ -153,7 +144,7 @@ static void alloc_new_slab(struct cache *cache)
 	cache->free_slabs = slab;
 }
 
-void *cache_alloc(struct cache *cache)
+void *cache_alloc(t_slab_cache *cache)
 {
 	void *obj;
 
@@ -187,7 +178,7 @@ static bool ptr_in_slabs(t_slab *slab, size_t slab_offset_to_header, void *ptr)
 	return false;
 }
 
-bool ptr_in_cache(struct cache *cache, void *ptr)
+bool ptr_in_cache(const t_slab_cache *cache, void *ptr)
 {
 	if (cache->partially_slabs
 	    && ptr_in_slabs(cache->partially_slabs, cache->slab_offset_to_header, ptr))
@@ -202,7 +193,7 @@ bool ptr_in_cache(struct cache *cache, void *ptr)
 	return false;
 }
 
-void cache_free(struct cache *cache, void *ptr)
+void cache_free(t_slab_cache *cache, void *ptr)
 {
 	t_slab *slab;
 	char **new_obj;
@@ -232,7 +223,7 @@ void cache_free(struct cache *cache, void *ptr)
 	}
 }
 
-void cache_shrink(struct cache *cache)
+void cache_shrink(t_slab_cache *cache)
 {
 	t_slab *iter;
 
@@ -259,7 +250,7 @@ static void free_slabs(void (*deallocate_slab)(void *, size_t), t_slab *slab_ite
 	}
 }
 
-void cache_release(struct cache *cache)
+void cache_release(t_slab_cache *cache)
 {
 	free_slabs(cache->deallocate_slab, cache->free_slabs, cache->slab_size);
 	cache->free_slabs = NULL;
@@ -287,7 +278,7 @@ static void show_slabs_mem(t_slab *slab, size_t object_size, size_t objects_in_s
 	}
 }
 
-void show_cache_mem(struct cache *cache)
+void show_cache_mem(t_slab_cache *cache)
 {
 	if (!cache->partially_slabs && !cache->full_slabs)
 		return;

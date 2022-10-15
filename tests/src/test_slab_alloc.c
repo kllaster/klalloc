@@ -28,7 +28,7 @@ void dealloc_slab_test(void *slab, size_t order)
 void test_slab_alloc_allocation_objects_and_free()
 {
 	char *arr[100];
-	struct cache cache;
+	t_slab_cache cache;
 
 	cache_setup(&cache, alloc_slab_test, dealloc_slab_test, 8);
 
@@ -88,7 +88,7 @@ void test_slab_alloc_defragmentation()
 {
 	int size = 1200;
 	char *arr[size];
-	struct cache cache;
+	t_slab_cache cache;
 
 	cache_setup(&cache, alloc_slab_test, dealloc_slab_test, 8);
 
@@ -142,7 +142,7 @@ void test_slab_alloc_check_ptr_in_cache()
 {
 	int size = 200;
 	int *arr[size];
-	struct cache cache;
+	t_slab_cache cache;
 
 	cache_setup(&cache, alloc_slab_test, dealloc_slab_test, 8);
 

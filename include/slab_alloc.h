@@ -26,25 +26,24 @@ typedef enum
 /**
  * This struct is slab allocator for object_size
  **/
-struct cache
+typedef struct slab_cache
 {
 	t_slab *free_slabs;
 	t_slab *partially_slabs;
 	t_slab *full_slabs;
-	// allocate_slab - allocate memory where size = getpagesize() * 2 ^ order
 	void *(*allocate_slab)(size_t);
 	void (*deallocate_slab)(void *, size_t);
 	size_t object_size;
 	size_t objects_in_slab;
 	size_t slab_offset_to_header;
 	size_t slab_size;
-};
+} t_slab_cache;
 
 /**
  * Init slab allocator
  **/
 void cache_setup(
-	struct cache *cache,
+	t_slab_cache *cache,
 	void *(*allocate_slab)(size_t),
 	void (*deallocate_slab)(void *, size_t),
 	size_t object_size
@@ -53,31 +52,31 @@ void cache_setup(
 /**
  * Deallocate all slabs in cache
  **/
-void cache_release(struct cache *cache);
+void cache_release(t_slab_cache *cache);
 
 /**
  * Deallocate all free slabs in cache
  **/
-void cache_shrink(struct cache *cache);
+void cache_shrink(t_slab_cache *cache);
 
 /**
  * Get free object in slab
  **/
-void *cache_alloc(struct cache *cache);
+void *cache_alloc(t_slab_cache *cache);
 
 /**
  * Free object in slab
  **/
-void cache_free(struct cache *cache, void *ptr);
+void cache_free(t_slab_cache *cache, void *ptr);
 
 /**
  * Check if pointer is in cache
  **/
-bool ptr_in_cache(struct cache *cache, void *ptr);
+bool ptr_in_cache(const t_slab_cache *cache, void *ptr);
 
 /**
  * Print allocated memory in cache
  **/
-void show_cache_mem(struct cache *cache);
+void show_cache_mem(t_slab_cache *cache);
 
 #endif
