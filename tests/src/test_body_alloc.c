@@ -1,18 +1,22 @@
-#include "../../include/body_alloc.h"
+#include "body_alloc.h"
 #include "test_utils.h"
+
+static const int buffer_size = 4096 * 4;
+static char buffer[buffer_size];
 
 static void inline allocate_small_objects(t_body_alloc_meta *body_alloc_meta)
 {
-	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * 10);
+	int size = 200;
+	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * size);
 	assert(arr != NULL);
 
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < size; i++)
 	{
-		arr[i] = body_alloc(body_alloc_meta, 100);
+		arr[i] = body_alloc(body_alloc_meta, 31);
 		assert(arr[i] != NULL);
 	}
 
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < size; i++)
 	{
 		body_alloc_free(body_alloc_meta, arr[i]);
 	}
@@ -21,14 +25,12 @@ static void inline allocate_small_objects(t_body_alloc_meta *body_alloc_meta)
 
 void test_body_alloc_allocation()
 {
-	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
-	char buf[memory_size];
-	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)buffer;
 
 	body_alloc_setup(
 		body_alloc_meta,
-		(char *)&buf + sizeof(t_body_alloc_meta),
-		memory_size - sizeof(t_body_alloc_meta)
+		(char *)buffer + sizeof(t_body_alloc_meta),
+		buffer_size - sizeof(t_body_alloc_meta)
 	);
 
 	allocate_small_objects(body_alloc_meta);
@@ -40,14 +42,12 @@ void test_body_alloc_allocation()
 
 void test_body_alloc_fail_allocation()
 {
-	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
-	char buf[memory_size];
-	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)buffer;
 
 	body_alloc_setup(
 		body_alloc_meta,
-		(char *)&buf + sizeof(t_body_alloc_meta),
-		memory_size - sizeof(t_body_alloc_meta)
+		(char *)buffer + sizeof(t_body_alloc_meta),
+		buffer_size - sizeof(t_body_alloc_meta)
 	);
 
 	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * 10);
@@ -55,11 +55,11 @@ void test_body_alloc_fail_allocation()
 
 	for (int i = 0; i < 10; i++)
 	{
-		arr[i] = body_alloc(body_alloc_meta, 100);
+		arr[i] = body_alloc(body_alloc_meta, 1500);
 		assert(arr[i] != NULL);
 	}
 
-	assert(body_alloc(body_alloc_meta, 100) == NULL);
+	assert(body_alloc(body_alloc_meta, 1000) == NULL);
 
 	for (int i = 0; i < 10; i++)
 	{
@@ -72,14 +72,12 @@ void test_body_alloc_fail_allocation()
 
 void test_body_alloc_valid_data()
 {
-	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
-	char buf[memory_size];
-	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)buffer;
 
 	body_alloc_setup(
 		body_alloc_meta,
-		(char *)&buf + sizeof(t_body_alloc_meta),
-		memory_size - sizeof(t_body_alloc_meta)
+		(char *)buffer + sizeof(t_body_alloc_meta),
+		buffer_size - sizeof(t_body_alloc_meta)
 	);
 
 	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * 10);
@@ -119,14 +117,12 @@ void test_body_alloc_valid_data()
 
 void test_body_alloc_defragmentation()
 {
-	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
-	char buf[memory_size];
-	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)buffer;
 
 	body_alloc_setup(
 		body_alloc_meta,
-		(char *)&buf + sizeof(t_body_alloc_meta),
-		memory_size - sizeof(t_body_alloc_meta)
+		(char *)buffer + sizeof(t_body_alloc_meta),
+		buffer_size - sizeof(t_body_alloc_meta)
 	);
 
 	{
@@ -163,22 +159,20 @@ void test_body_alloc_defragmentation()
 
 void test_body_alloc_check_max_node_size()
 {
-	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
-	char buf[memory_size];
-	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
-	memory_size -= sizeof(t_body_alloc_meta);
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)buffer;
 
 	body_alloc_setup(
 		body_alloc_meta,
-		(char *)&buf + sizeof(t_body_alloc_meta),
-		memory_size
+		(char *)buffer + sizeof(t_body_alloc_meta),
+		buffer_size - sizeof(t_body_alloc_meta)
 	);
 
 	int arr_size = 10;
 	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * arr_size);
 
-	size_t size_without_arr = memory_size - (sizeof(t_body_alloc_node) * 2)
-	                          - (sizeof(char *) * arr_size + sizeof(t_body_alloc_node) * 2);
+	size_t size_without_arr =
+		buffer_size - sizeof(t_body_alloc_meta) - (sizeof(t_body_alloc_node) * 2)
+		- (sizeof(char *) * arr_size + sizeof(t_body_alloc_node) * 2);
 	assert_print_size_t(
 		body_alloc_meta->max_node_size == size_without_arr,
 		body_alloc_meta->max_node_size,
@@ -213,7 +207,7 @@ void test_body_alloc_check_max_node_size()
 
 	body_alloc_free(body_alloc_meta, arr);
 
-	size_t full_memory = memory_size - (sizeof(t_body_alloc_node) * 2);
+	size_t full_memory = buffer_size - sizeof(t_body_alloc_meta) - (sizeof(t_body_alloc_node) * 2);
 	assert_print_size_t(
 		body_alloc_meta->max_node_size == full_memory,
 		body_alloc_meta->max_node_size,
@@ -225,14 +219,12 @@ void test_body_alloc_check_max_node_size()
 
 void test_body_alloc_check_ptr_in_body_alloc_list()
 {
-	size_t memory_size = 1400 + sizeof(t_body_alloc_meta) + sizeof(t_body_alloc_node) * 2;
-	char buf[memory_size];
-	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)&buf;
+	t_body_alloc_meta *body_alloc_meta = (t_body_alloc_meta *)buffer;
 
 	body_alloc_setup(
 		body_alloc_meta,
-		(char *)&buf + sizeof(t_body_alloc_meta),
-		memory_size - sizeof(t_body_alloc_meta)
+		(char *)buffer + sizeof(t_body_alloc_meta),
+		buffer_size - sizeof(t_body_alloc_meta)
 	);
 
 	char **arr = body_alloc(body_alloc_meta, sizeof(char *) * 10);
@@ -245,7 +237,7 @@ void test_body_alloc_check_ptr_in_body_alloc_list()
 		assert(ptr_in_body_alloc_list(body_alloc_meta, arr[i]));
 	}
 
-	assert(body_alloc(body_alloc_meta, 100) == NULL);
+	assert(body_alloc(body_alloc_meta, 20000) == NULL);
 
 	for (int i = 0; i < 10; i++)
 	{

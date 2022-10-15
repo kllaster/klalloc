@@ -6,6 +6,7 @@
 # include <assert.h>
 # include <printf.h>
 # include <unistd.h>
+# include "utils.h"
 
 #define assert_print_ptr(expr, ptr1, ptr2) \
         if (!(expr)) { \
@@ -17,12 +18,16 @@
         if (!(expr)) { \
             dprintf(STDERR_FILENO, "current: %zu, expected: %zu\n", val1, val2); \
             assert((expr)); \
-        } \
+        }                                     \
 
-#define print_str_literal(str) \
-        write(1, (str), sizeof(str) - 1); \
+#define assert_print_int(expr, val1, val2) \
+        if (!(expr)) { \
+            dprintf(STDERR_FILENO, "current: %d, expected: %d\n", val1, val2); \
+            assert((expr)); \
+        }                                     \
 
 void slab_tests();
 void body_alloc_tests();
+void klalloc_tests();
 
 #endif

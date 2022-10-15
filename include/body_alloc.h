@@ -4,6 +4,7 @@
 # include <limits.h>
 # include <unistd.h>
 # include <stdbool.h>
+# include "utils.h"
 
 # define MIN_ALLOCTAED_BYTE_MEM 16
 
@@ -26,7 +27,8 @@ struct s_body_alloc_meta
 
 void body_alloc_setup(t_body_alloc_meta *body_alloc_meta, void *buf, size_t size);
 void *body_alloc(t_body_alloc_meta *body_alloc_meta, size_t size);
+void *body_alloc_align(t_body_alloc_meta *body_alloc_meta, size_t size, size_t align_to);
 void body_alloc_free(t_body_alloc_meta *body_alloc_meta, void *ptr);
-t_body_alloc_meta *ptr_in_body_alloc_list(t_body_alloc_meta *body_alloc_meta, void *ptr);
+t_body_alloc_meta *ptr_in_body_alloc_list(const t_body_alloc_meta *body_alloc_meta, void *ptr);
 
 #endif

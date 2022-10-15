@@ -1,27 +1,28 @@
-#include "../../include/slab_alloc.h"
-#include "../../include/utils.h"
-#include "printf.h"
+#include "slab_alloc.h"
 #include "test_utils.h"
 
-static const int buffer_size = 12288;
+static const int buffer_size = 4096 * 6;
 
 static char buffer[buffer_size];
 
-void *get_slab_mem()
+static int next_slab = -1;
+
+void *get_slab_mem(int next)
 {
-	return align_addr(&buffer[buffer_size / 2], 4096);
+	return (char *)align((size_t)&buffer, 4096) + 4096 * next;
 }
 
 void *alloc_slab_test(size_t order)
 {
 	(void)order;
-	return get_slab_mem();
+	return get_slab_mem(++next_slab);
 }
 
 void dealloc_slab_test(void *slab, size_t order)
 {
 	(void)slab;
 	(void)order;
+	next_slab--;
 }
 
 void test_slab_alloc_allocation_objects_and_free()
@@ -37,7 +38,7 @@ void test_slab_alloc_allocation_objects_and_free()
 		arr[i] = cache_alloc(&cache);
 		assert(arr[i] != NULL);
 
-		char *expected_ptr = ((char *)get_slab_mem() + cache.object_size * i);
+		char *expected_ptr = ((char *)get_slab_mem(0) + cache.object_size * i);
 		assert_print_ptr((char *)arr[i] == expected_ptr, arr[i], expected_ptr);
 
 		arr[i][0] = '1';
@@ -66,15 +67,16 @@ void test_slab_alloc_allocation_objects_and_free()
 
 	// Allocate again
 	size_t slab_size = cache.object_size * cache.objects_in_slab + sizeof(t_slab);
-	char *upper_bound = (char *)get_slab_mem() + slab_size;
+	char *upper_bound = (char *)get_slab_mem(1) + slab_size;
 	for (int i = 0; i < 100; i++)
 	{
 		arr[i] = cache_alloc(&cache);
 		assert(arr[i] != NULL);
 
 		// Pointer must be in bounds of first slab
-		assert(arr[i] >= (char *)get_slab_mem());
+		assert(arr[i] >= (char *)get_slab_mem(0));
 		assert(arr[i] < upper_bound);
+		cache_free(&cache, arr[i]);
 	}
 
 	cache_release(&cache);
@@ -84,18 +86,26 @@ void test_slab_alloc_allocation_objects_and_free()
 
 void test_slab_alloc_defragmentation()
 {
-	char *arr[100];
+	int size = 1200;
+	char *arr[size];
 	struct cache cache;
 
 	cache_setup(&cache, alloc_slab_test, dealloc_slab_test, 8);
 
 	// Allocate
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < size; i++)
 	{
 		arr[i] = cache_alloc(&cache);
 		assert(arr[i] != NULL);
 
-		char *expected_ptr = ((char *)get_slab_mem() + cache.object_size * i);
+		char *expected_ptr;
+		if (i < 507)
+			expected_ptr = ((char *)get_slab_mem(0) + cache.object_size * i);
+		else if (i < 1014)
+			expected_ptr = ((char *)get_slab_mem(1) + cache.object_size * (i - 507));
+		else
+			expected_ptr = ((char *)get_slab_mem(2) + cache.object_size * (i - 1014));
+
 		assert_print_ptr((char *)arr[i] == expected_ptr, arr[i], expected_ptr);
 	}
 
@@ -118,6 +128,11 @@ void test_slab_alloc_defragmentation()
 		assert_print_ptr(arr[i] == saved_ptr[a], arr[i], saved_ptr[a]);
 	}
 
+	for (int i = 0; i < size; i++)
+	{
+		cache_free(&cache, arr[i]);
+	}
+
 	cache_release(&cache);
 
 	print_str_literal("[+] Success test slab_alloc defragmentation\n");
@@ -125,28 +140,31 @@ void test_slab_alloc_defragmentation()
 
 void test_slab_alloc_check_ptr_in_cache()
 {
-	int *arr[100];
+	int size = 200;
+	int *arr[size];
 	struct cache cache;
 
 	cache_setup(&cache, alloc_slab_test, dealloc_slab_test, 8);
 
 	// Allocate
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < size; i++)
 	{
 		arr[i] = cache_alloc(&cache);
 		assert(arr[i] != NULL);
 
-		char *expected_ptr = ((char *)get_slab_mem() + cache.object_size * i);
+		char *expected_ptr = ((char *)get_slab_mem(0) + cache.object_size * i);
 		assert_print_ptr((char *)arr[i] == expected_ptr, arr[i], expected_ptr);
 	}
 
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < size; i++)
 	{
 		assert(ptr_in_cache(&cache, arr[i]));
 		cache_free(&cache, arr[i]);
 	}
 
 	assert(!ptr_in_cache(&cache, (void *)0x01));
+
+	cache_release(&cache);
 
 	print_str_literal("[+] Success test slab_alloc check ptr in cache\n");
 }

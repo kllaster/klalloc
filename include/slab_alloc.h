@@ -1,8 +1,9 @@
-#ifndef KLSLAB_H
-# define KLSLAB_H
+#ifndef KL_SLAB_ALLOC_H
+# define KL_SLAB_ALLOC_H
 
 # include <unistd.h>
 # include <stdbool.h>
+# include "utils.h"
 
 typedef struct s_slab t_slab;
 
@@ -73,5 +74,10 @@ void cache_free(struct cache *cache, void *ptr);
  * Check if pointer is in cache
  **/
 bool ptr_in_cache(struct cache *cache, void *ptr);
+
+/**
+ * Print allocated memory in cache
+ **/
+void show_cache_mem(struct cache *cache);
 
 #endif

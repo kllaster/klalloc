@@ -1,5 +1,4 @@
 #include "slab_alloc.h"
-#include <printf.h>
 
 void cache_setup(
 	struct cache *cache,
@@ -23,7 +22,7 @@ void cache_setup(
 	else
 		slab_order = 0;
 
-	cache->slab_size = 4096 * (size_t)(1 << slab_order);
+	cache->slab_size = 4096 * (size_t)(1UL << slab_order);
 	size_t slab_size_without_header = cache->slab_size - sizeof(t_slab);
 
 	if (slab_size_without_header < object_size)
@@ -208,9 +207,6 @@ void cache_free(struct cache *cache, void *ptr)
 	t_slab *slab;
 	char **new_obj;
 
-	if (!ptr_in_cache(cache, ptr))
-		return;
-
 	slab = (t_slab * )(
 		(char *)((uint64_t)ptr & (~(cache->slab_size - 1)))
 		+ cache->slab_offset_to_header
@@ -271,4 +267,50 @@ void cache_release(struct cache *cache)
 	cache->partially_slabs = NULL;
 	free_slabs(cache->deallocate_slab, cache->full_slabs, cache->slab_size);
 	cache->full_slabs = NULL;
+}
+
+static void show_slabs_mem(t_slab *slab, size_t object_size, size_t objects_in_slab)
+{
+	size_t slab_bytes = object_size * objects_in_slab;
+	while (slab)
+	{
+		if (slab->count_free != objects_in_slab)
+		{
+			print_ptr(slab->start_mem);
+			print_str_literal(" - ");
+			print_ptr((char *)slab->start_mem + slab_bytes);
+			print_str_literal(" : ");
+			print_num((objects_in_slab - slab->count_free) * object_size);
+			print_str_literal(" bytes\n");
+		}
+		slab = slab->next;
+	}
+}
+
+void show_cache_mem(struct cache *cache)
+{
+	if (!cache->partially_slabs && !cache->full_slabs)
+		return;
+
+	print_str_literal("Slabs with object size: ");
+	print_num(cache->object_size);
+	print_str_literal(" bytes\n");
+
+	if (cache->partially_slabs)
+	{
+		show_slabs_mem(
+			cache->partially_slabs,
+			cache->object_size,
+			cache->objects_in_slab
+		);
+	}
+
+	if (cache->full_slabs)
+	{
+		show_slabs_mem(
+			cache->full_slabs,
+			cache->object_size,
+			cache->objects_in_slab
+		);
+	}
 }
