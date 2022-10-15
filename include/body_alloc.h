@@ -25,10 +25,12 @@ struct s_body_alloc_meta
 	size_t max_node_size;
 };
 
-void body_alloc_setup(t_body_alloc_meta *body_alloc_meta, void *buf, size_t size);
-void *body_alloc(t_body_alloc_meta *body_alloc_meta, size_t size);
-void *body_alloc_align(t_body_alloc_meta *body_alloc_meta, size_t size, size_t align_to);
-void body_alloc_free(t_body_alloc_meta *body_alloc_meta, void *ptr);
-t_body_alloc_meta *ptr_in_body_alloc_list(const t_body_alloc_meta *body_alloc_meta, void *ptr);
+void body_alloc_setup(t_body_alloc_meta *ba_meta, void *buf, size_t size);
+void *body_alloc(t_body_alloc_meta *ba_meta, size_t size);
+void *body_alloc_align(t_body_alloc_meta *ba_meta, size_t size, size_t align_to);
+void body_alloc_free(t_body_alloc_meta *ba_meta, void *ptr);
+
+t_body_alloc_meta *ptr_in_body_alloc_list(const t_body_alloc_meta *ba_meta, void *ptr);
+t_body_alloc_node *get_next_node(const t_body_alloc_meta *ba_meta, const t_body_alloc_node *node);
 
 #endif
