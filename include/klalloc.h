@@ -2,6 +2,11 @@
 # define KLALLOC_H
 
 # include <unistd.h>
-# include <sys/mman.h>
+
+void klfree(void *ptr);
+void *klalloc(size_t size);
+void *klrealloc(void *ptr, size_t size);
+
+void show_alloc_mem();
 
 #endif

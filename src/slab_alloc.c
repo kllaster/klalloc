@@ -20,7 +20,7 @@ void cache_setup(
 	else if (object_size >= page_size)
 		cache->slab_size = align(object_size * 4 + sizeof(t_slab), page_size);
 	else
-		cache->slab_size = align(object_size * 100 + sizeof(t_slab), page_size);
+		cache->slab_size = page_size;
 
 	cache->objects_in_slab = (cache->slab_size - sizeof(t_slab)) / object_size;
 	cache->slab_offset_to_header = cache->objects_in_slab * object_size;
