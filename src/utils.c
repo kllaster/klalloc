@@ -29,3 +29,27 @@ void print_num_base(size_t num, size_t base, size_t width)
 	}
 	write(STDIN_FILENO, &base_str[num % base], 1);
 }
+
+void *memmove(void *dst, const void *src, size_t count)
+{
+	size_t i;
+	unsigned char *p1;
+	unsigned char *p2;
+
+	i = -1;
+	p1 = (unsigned char *)dst;
+	p2 = (unsigned char *)src;
+	if (dst == src)
+		return (dst);
+	if (dst > src)
+	{
+		while (count--)
+			p1[count] = p2[count];
+	}
+	else
+	{
+		while (++i != count)
+			p1[i] = p2[i];
+	}
+	return (dst);
+}

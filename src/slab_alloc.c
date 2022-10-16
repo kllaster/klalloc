@@ -15,12 +15,7 @@ void cache_setup(
 	cache->deallocate_slab = deallocate_slab;
 
 	size_t page_size = getpagesize();
-	if (object_size >= page_size * 4)
-		cache->slab_size = align(object_size + sizeof(t_slab), page_size);
-	else if (object_size >= page_size)
-		cache->slab_size = align(object_size * 4 + sizeof(t_slab), page_size);
-	else
-		cache->slab_size = page_size;
+	cache->slab_size = page_size;
 
 	cache->objects_in_slab = (cache->slab_size - sizeof(t_slab)) / object_size;
 	cache->slab_offset_to_header = cache->objects_in_slab * object_size;

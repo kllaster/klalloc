@@ -117,29 +117,21 @@ static void *alloc_piece_of_mmap_align(t_klalloc_meta *klalloc_meta, size_t size
 
 static void *allocate_by_cache(t_slab_cache *cache, size_t cache_obj);
 
-void *alloc_slab(size_t size)
-{
-	t_klalloc_meta *klalloc_meta = get_klalloc_meta();
-
-	if (size == 4096 && klalloc_meta->cache[SLAB_CACHE_IDX_FOR_ALLOC_OTHER].object_size == 4096)
-		return allocate_by_cache(&klalloc_meta->cache[SLAB_CACHE_IDX_FOR_ALLOC_OTHER], 4096);
-
-	return alloc_piece_of_mmap_align(klalloc_meta, size, getpagesize());
-}
-
 void free_slab(void *slab, size_t size)
 {
 	t_klalloc_meta *klalloc_meta = get_klalloc_meta();
 
-	if (size == 4096 && klalloc_meta->cache[SLAB_CACHE_IDX_FOR_ALLOC_OTHER].object_size == 4096)
-	{
-		cache_free(&klalloc_meta->cache[SLAB_CACHE_IDX_FOR_ALLOC_OTHER], slab);
-		return;
-	}
-
 	t_body_alloc_meta *body_alloc = ptr_in_body_alloc_list(klalloc_meta->list, slab);
 	if (body_alloc)
 		body_alloc_free(body_alloc, slab);
+	(void)size;
+}
+
+void *alloc_slab(size_t size)
+{
+	t_klalloc_meta *klalloc_meta = get_klalloc_meta();
+
+	return alloc_piece_of_mmap_align(klalloc_meta, size, getpagesize());
 }
 
 static void *allocate_by_cache(t_slab_cache *cache, size_t cache_obj)
@@ -194,6 +186,7 @@ void klfree(void *ptr)
 			cache_free(&klalloc_meta->cache[i], ptr);
 			cache_shrink(&klalloc_meta->cache[i]);
 			in_cache = true;
+			break;
 		}
 	}
 
@@ -205,10 +198,75 @@ void klfree(void *ptr)
 	}
 }
 
-//void *klrealloc(void *ptr, size_t size)
-//{
-//	//..
-//}
+void *klrealloc(void *ptr, size_t size)
+{
+	int in_cache_idx = -1;
+	size_t ptr_size = 0;
+	t_klalloc_meta *klalloc_meta;
+
+	if (ptr == NULL)
+		return klalloc(size);
+	else if (size == 0)
+	{
+		klfree(ptr);
+		return NULL;
+	}
+
+	klalloc_meta = get_klalloc_meta();
+	for (int i = 0; i < COUNT_SLAB_CACHE; i++)
+	{
+		if (ptr_in_cache(&klalloc_meta->cache[i], ptr))
+		{
+			if (klalloc_meta->cache[i].object_size == size)
+				return ptr;
+			ptr_size = klalloc_meta->cache[i].object_size;
+			in_cache_idx = i;
+			break;
+		}
+	}
+
+	t_body_alloc_meta *ba_meta;
+	if (in_cache_idx == -1)
+	{
+		ba_meta = ptr_in_body_alloc_list(klalloc_meta->list, ptr);
+		if (!ba_meta)
+		{
+			// if the pointer is not found in the cache and body alloc
+			return NULL;
+		}
+
+		t_body_alloc_node *node = ba_meta->start;
+		while (node != NULL)
+		{
+			if (ptr == (char *)node + sizeof(t_body_alloc_node))
+			{
+				ptr_size = node->size;
+				break;
+			}
+			node = get_next_node(ba_meta, node);
+		}
+
+		if (ptr_size == 0)
+		{
+			// This happens if ptr is invalid
+			return NULL;
+		}
+	}
+
+	void *mem = klalloc(size);
+	if (mem)
+		memmove(mem, ptr, ptr_size);
+
+	if (in_cache_idx != -1)
+	{
+		cache_free(&klalloc_meta->cache[in_cache_idx], ptr);
+		cache_shrink(&klalloc_meta->cache[in_cache_idx]);
+	}
+	else
+		body_alloc_free(ba_meta, ptr);
+
+	return mem;
+}
 
 static void
 show_body_alloc_mem(const t_klalloc_meta *klalloc_meta, const t_body_alloc_meta *ba_meta)

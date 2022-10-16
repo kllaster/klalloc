@@ -6,8 +6,7 @@
 # include "slab_alloc.h"
 # include "utils.h"
 
-const static int COUNT_SLAB_CACHE = 9;
-const static int SLAB_CACHE_IDX_FOR_ALLOC_OTHER = 8;
+const static int COUNT_SLAB_CACHE = 6;
 
 const static size_t g_cache_obj_sizes[COUNT_SLAB_CACHE] = {
 	8,
@@ -16,9 +15,6 @@ const static size_t g_cache_obj_sizes[COUNT_SLAB_CACHE] = {
 	64,
 	128,
 	256,
-	1024,
-	2048,
-	4096
 };
 
 typedef struct s_klalloc_meta

@@ -19,4 +19,6 @@ void print_ptr(const void *ptr);
 void print_num(size_t num);
 void print_num_base(size_t num, size_t base, size_t width);
 
+void *memmove(void *dst, const void *src, size_t count);
+
 #endif
