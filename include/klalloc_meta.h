@@ -1,10 +1,13 @@
 #ifndef KL_ALLOC_META_H
 # define KL_ALLOC_META_H
 
+# include <pthread.h>
 # include <sys/mman.h>
 # include "body_alloc.h"
 # include "slab_alloc.h"
 # include "utils.h"
+
+static pthread_mutex_t g_klalloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 const static int COUNT_SLAB_CACHE = 6;
 

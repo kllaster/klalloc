@@ -161,11 +161,15 @@ void *klalloc(size_t size)
 	{
 		if (size <= g_cache_obj_sizes[i])
 		{
+			pthread_mutex_lock(&g_klalloc_mutex);
 			mem = allocate_by_cache(&klalloc_meta->cache[i], g_cache_obj_sizes[i]);
+			pthread_mutex_unlock(&g_klalloc_mutex);
 			return mem;
 		}
 	}
+	pthread_mutex_lock(&g_klalloc_mutex);
 	mem = alloc_piece_of_mmap(klalloc_meta, align(size, sizeof(t_word)));
+	pthread_mutex_unlock(&g_klalloc_mutex);
 	return mem;
 }
 
@@ -179,6 +183,7 @@ void klfree(void *ptr)
 	t_klalloc_meta *klalloc_meta = get_klalloc_meta();
 
 	bool in_cache = false;
+	pthread_mutex_lock(&g_klalloc_mutex);
 	for (int i = 0; i < COUNT_SLAB_CACHE; i++)
 	{
 		if (ptr_in_cache(&klalloc_meta->cache[i], ptr))
@@ -196,6 +201,7 @@ void klfree(void *ptr)
 		if (body_alloc)
 			body_alloc_free(body_alloc, ptr);
 	}
+	pthread_mutex_unlock(&g_klalloc_mutex);
 }
 
 void *klrealloc(void *ptr, size_t size)
@@ -212,6 +218,7 @@ void *klrealloc(void *ptr, size_t size)
 		return NULL;
 	}
 
+	pthread_mutex_lock(&g_klalloc_mutex);
 	klalloc_meta = get_klalloc_meta();
 	for (int i = 0; i < COUNT_SLAB_CACHE; i++)
 	{
@@ -252,11 +259,13 @@ void *klrealloc(void *ptr, size_t size)
 			return NULL;
 		}
 	}
+	pthread_mutex_unlock(&g_klalloc_mutex);
 
 	void *mem = klalloc(size);
 	if (mem)
 		memmove(mem, ptr, ptr_size);
 
+	pthread_mutex_lock(&g_klalloc_mutex);
 	if (in_cache_idx != -1)
 	{
 		cache_free(&klalloc_meta->cache[in_cache_idx], ptr);
@@ -264,6 +273,7 @@ void *klrealloc(void *ptr, size_t size)
 	}
 	else
 		body_alloc_free(ba_meta, ptr);
+	pthread_mutex_unlock(&g_klalloc_mutex);
 
 	return mem;
 }
@@ -304,9 +314,11 @@ void show_alloc_mem()
 {
 	t_klalloc_meta *klalloc_meta = get_klalloc_meta();
 
+	pthread_mutex_lock(&g_klalloc_mutex);
 	for (int i = 0; i < COUNT_SLAB_CACHE; i++)
 		show_cache_mem(&klalloc_meta->cache[i]);
 
 	for (t_body_alloc_meta *iter = klalloc_meta->list; iter != NULL; iter = iter->next)
 		show_body_alloc_mem(klalloc_meta, iter);
+	pthread_mutex_unlock(&g_klalloc_mutex);
 }
