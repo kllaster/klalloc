@@ -3,7 +3,7 @@
 
 # include <pthread.h>
 # include <sys/mman.h>
-# include "body_alloc.h"
+# include "btags_alloc.h"
 # include "slab_alloc.h"
 # include "utils.h"
 
@@ -22,7 +22,7 @@ const static size_t g_cache_obj_sizes[COUNT_SLAB_CACHE] = {
 
 typedef struct s_klalloc_meta
 {
-	t_body_alloc_meta *list;
+	t_btags_alloc_meta *list;
 	t_slab_cache cache[COUNT_SLAB_CACHE];
 } t_klalloc_meta;
 

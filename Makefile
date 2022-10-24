@@ -4,7 +4,7 @@ CC				= clang
 RM				= rm -f
 MKDIR			= mkdir -p
 SYMLINK			= ln -fs
-DEBUG			= 1
+DEBUG			= 0
 
 ifeq ($(DEBUG), 1)
 	DEBUG_FLAGS	= -fsanitize=address -g
@@ -30,7 +30,7 @@ INC_DIR			= include
 
 SRCS			= src/klalloc.c\
 					src/slab_alloc.c\
-					src/body_alloc.c\
+					src/btags_alloc.c\
 					src/utils.c\
 
 SYMLINK_NAME	= lib$(NAME).$(EXT)

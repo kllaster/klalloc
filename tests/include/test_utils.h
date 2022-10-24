@@ -27,7 +27,7 @@
         }                                     \
 
 void slab_tests();
-void body_alloc_tests();
+void btags_alloc_tests();
 void klalloc_tests();
 
 #endif
